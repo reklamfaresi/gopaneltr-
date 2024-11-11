@@ -1,18 +1,20 @@
 package main
 
 import (
-	"github.com/gin-gonic/gin"
-	"net/http"
+	"github.com/reklamfaresi/gopaneltr-/models"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
 )
 
 func main() {
-	router := gin.Default()
+	// Veritabanı bağlantı bilgileri
+	dsn := "root:@tcp(127.0.0.1:3306)/gopaneltr?charset=utf8mb4&parseTime=True&loc=Local"
+	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	if err != nil {
+		panic("Veritabanına bağlanılamadı!")
+	}
 
-	router.GET("/", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"message": "gopaneltr API'sine hoş geldiniz!",
-		})
-	})
+	// Veritabanında tablo oluştur
+	db.AutoMigrate(&models.User{})
 
-	router.Run(":8080")
 }
