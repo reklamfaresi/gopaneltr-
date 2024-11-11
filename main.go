@@ -62,6 +62,13 @@ func main() {
 	router.GET("/videos/:id", getVideoHandler)
 	router.PUT("/videos/:id", updateVideoHandler)
 	router.DELETE("/videos/:id", deleteVideoHandler)
+	// Image endpointleri
+	router.POST("/images", createImageHandler)
+	router.GET("/images", getImagesHandler)
+	router.GET("/images/:id", getImageHandler)
+	router.PUT("/images/:id", updateImageHandler)
+	router.DELETE("/images/:id", deleteImageHandler)
+
 	// API'yi 8080 portunda başlat
 	router.Run(":8080")
 }
@@ -519,4 +526,97 @@ func deleteVideoHandler(c *gin.Context) {
 
 	// Başarı mesajı döndür
 	c.JSON(http.StatusOK, gin.H{"message": "Video başarıyla silindi"})
+}
+func createImageHandler(c *gin.Context) {
+	// İstekten resim bilgilerini al
+	var input models.Image
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Resmi veritabanına kaydet
+	result := db.Create(&input)
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Resim kaydedilirken hata oluştu"})
+		return
+	}
+
+	// Başarı mesajı döndür
+	c.JSON(http.StatusCreated, gin.H{"message": "Resim başarıyla kaydedildi"})
+}
+func getImagesHandler(c *gin.Context) {
+	var images []models.Image
+	result := db.Find(&images)
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Resimler getirilirken hata oluştu"})
+		return
+	}
+
+	c.JSON(http.StatusOK, images)
+}
+func getImageHandler(c *gin.Context) {
+	imageId, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz resim ID'si"})
+		return
+	}
+
+	var image models.Image
+	result := db.First(&image, imageId)
+	if result.Error != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Resim bulunamadı"})
+		return
+	}
+
+	c.JSON(http.StatusOK, image)
+}
+func updateImageHandler(c *gin.Context) {
+	imageId, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz resim ID'si"})
+		return
+	}
+
+	// İstekten güncellenecek bilgileri al
+	var input models.Image
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Resmi veritabanında bul
+	var image models.Image
+	result := db.First(&image, imageId)
+	if result.Error != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Resim bulunamadı"})
+		return
+	}
+
+	// Bilgileri güncelle
+	db.Model(&image).Updates(input)
+
+	// Başarı mesajı döndür
+	c.JSON(http.StatusOK, gin.H{"message": "Resim bilgileri başarıyla güncellendi"})
+}
+func deleteImageHandler(c *gin.Context) {
+	imageId, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz resim ID'si"})
+		return
+	}
+
+	// Resmi veritabanında bul
+	var image models.Image
+	result := db.First(&image, imageId)
+	if result.Error != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Resim bulunamadı"})
+		return
+	}
+
+	// Resmi sil
+	db.Delete(&image)
+
+	// Başarı mesajı döndür
+	c.JSON(http.StatusOK, gin.H{"message": "Resim başarıyla silindi"})
 }
