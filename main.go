@@ -54,7 +54,14 @@ func main() {
 	router.GET("/services/:id", getServiceHandler)
 	router.PUT("/services/:id", updateServiceHandler)
 	router.DELETE("/services/:id", deleteServiceHandler)
-
+	router = gin.Default()
+	router.NoRoute(noRouteHandler)
+	// Video endpointleri
+	router.POST("/videos", createVideoHandler)
+	router.GET("/videos", getVideosHandler)
+	router.GET("/videos/:id", getVideoHandler)
+	router.PUT("/videos/:id", updateVideoHandler)
+	router.DELETE("/videos/:id", deleteVideoHandler)
 	// API'yi 8080 portunda başlat
 	router.Run(":8080")
 }
@@ -413,4 +420,103 @@ func deleteServiceHandler(c *gin.Context) {
 
 	// Başarı mesajı döndür
 	c.JSON(http.StatusOK, gin.H{"message": "Hizmet başarıyla silindi"})
+}
+func noRouteHandler(c *gin.Context) {
+	c.HTML(http.StatusNotFound, "404.html", gin.H{
+		"title":   "Sayfa Bulunamadı",
+		"message": "Aradığınız sayfa bulunamadı.",
+	})
+}
+func createVideoHandler(c *gin.Context) {
+	// İstekten video bilgilerini al
+	var input models.Video
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Videoyu veritabanına kaydet
+	result := db.Create(&input)
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Video kaydedilirken hata oluştu"})
+		return
+	}
+
+	// Başarı mesajı döndür
+	c.JSON(http.StatusCreated, gin.H{"message": "Video başarıyla kaydedildi"})
+}
+func getVideosHandler(c *gin.Context) {
+	var videos []models.Video
+	result := db.Find(&videos)
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Videolar getirilirken hata oluştu"})
+		return
+	}
+
+	c.JSON(http.StatusOK, videos)
+}
+func getVideoHandler(c *gin.Context) {
+	videoId, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz video ID'si"})
+		return
+	}
+
+	var video models.Video
+	result := db.First(&video, videoId)
+	if result.Error != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Video bulunamadı"})
+		return
+	}
+
+	c.JSON(http.StatusOK, video)
+}
+func updateVideoHandler(c *gin.Context) {
+	videoId, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz video ID'si"})
+		return
+	}
+
+	// İstekten güncellenecek bilgileri al
+	var input models.Video
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Videoyu veritabanında bul
+	var video models.Video
+	result := db.First(&video, videoId)
+	if result.Error != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Video bulunamadı"})
+		return
+	}
+
+	// Bilgileri güncelle
+	db.Model(&video).Updates(input)
+
+	// Başarı mesajı döndür
+	c.JSON(http.StatusOK, gin.H{"message": "Video bilgileri başarıyla güncellendi"})
+}
+func deleteVideoHandler(c *gin.Context) {
+	videoId, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz video ID'si"})
+		return
+	}
+
+	// Videoyu veritabanında bul
+	var video models.Video
+	result := db.First(&video, videoId)
+	if result.Error != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Video bulunamadı"})
+		return
+	}
+
+	// Videoyu sil
+	db.Delete(&video)
+
+	// Başarı mesajı döndür
+	c.JSON(http.StatusOK, gin.H{"message": "Video başarıyla silindi"})
 }
