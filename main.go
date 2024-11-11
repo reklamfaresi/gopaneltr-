@@ -68,7 +68,12 @@ func main() {
 	router.GET("/images/:id", getImageHandler)
 	router.PUT("/images/:id", updateImageHandler)
 	router.DELETE("/images/:id", deleteImageHandler)
-
+	// FAQ endpointleri
+	router.POST("/faqs", createFAQHandler)
+	router.GET("/faqs", getFAQsHandler)
+	router.GET("/faqs/:id", getFAQHandler)
+	router.PUT("/faqs/:id", updateFAQHandler)
+	router.DELETE("/faqs/:id", deleteFAQHandler)
 	// API'yi 8080 portunda başlat
 	router.Run(":8080")
 }
@@ -619,4 +624,97 @@ func deleteImageHandler(c *gin.Context) {
 
 	// Başarı mesajı döndür
 	c.JSON(http.StatusOK, gin.H{"message": "Resim başarıyla silindi"})
+}
+func createFAQHandler(c *gin.Context) {
+	// İstekten FAQ bilgilerini al
+	var input models.FAQ
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// FAQ'yu veritabanına kaydet
+	result := db.Create(&input)
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "FAQ kaydedilirken hata oluştu"})
+		return
+	}
+
+	// Başarı mesajı döndür
+	c.JSON(http.StatusCreated, gin.H{"message": "FAQ başarıyla kaydedildi"})
+}
+func getFAQsHandler(c *gin.Context) {
+	var faqs []models.FAQ
+	result := db.Find(&faqs)
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "FAQ'lar getirilirken hata oluştu"})
+		return
+	}
+
+	c.JSON(http.StatusOK, faqs)
+}
+func getFAQHandler(c *gin.Context) {
+	faqId, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz FAQ ID'si"})
+		return
+	}
+
+	var faq models.FAQ
+	result := db.First(&faq, faqId)
+	if result.Error != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "FAQ bulunamadı"})
+		return
+	}
+
+	c.JSON(http.StatusOK, faq)
+}
+func updateFAQHandler(c *gin.Context) {
+	faqId, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz FAQ ID'si"})
+		return
+	}
+
+	// İstekten güncellenecek bilgileri al
+	var input models.FAQ
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// FAQ'yu veritabanında bul
+	var faq models.FAQ
+	result := db.First(&faq, faqId)
+	if result.Error != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "FAQ bulunamadı"})
+		return
+	}
+
+	// Bilgileri güncelle
+	db.Model(&faq).Updates(input)
+
+	// Başarı mesajı döndür
+	c.JSON(http.StatusOK, gin.H{"message": "FAQ bilgileri başarıyla güncellendi"})
+}
+func deleteFAQHandler(c *gin.Context) {
+	faqId, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz FAQ ID'si"})
+		return
+	}
+
+	// FAQ'yu veritabanında bul
+	var faq models.FAQ
+	result := db.First(&faq, faqId)
+	if result.Error != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "FAQ bulunamadı"})
+		return
+	}
+
+	// FAQ'yu sil
+	db.Delete(&faq)
+
+	// Başarı mesajı döndür
+	c.JSON(http.StatusOK, gin.H{"message": "FAQ başarıyla silindi"})
 }
