@@ -74,6 +74,12 @@ func main() {
 	router.GET("/faqs/:id", getFAQHandler)
 	router.PUT("/faqs/:id", updateFAQHandler)
 	router.DELETE("/faqs/:id", deleteFAQHandler)
+	// Post endpointleri
+	router.POST("/posts", createPostHandler)
+	router.GET("/posts", getPostsHandler)
+	router.GET("/posts/:id", getPostHandler)
+	router.PUT("/posts/:id", updatePostHandler)
+	router.DELETE("/posts/:id", deletePostHandler)
 	// API'yi 8080 portunda başlat
 	router.Run(":8080")
 }
@@ -717,4 +723,97 @@ func deleteFAQHandler(c *gin.Context) {
 
 	// Başarı mesajı döndür
 	c.JSON(http.StatusOK, gin.H{"message": "FAQ başarıyla silindi"})
+}
+func createPostHandler(c *gin.Context) {
+	// İstekten blog yazısı bilgilerini al
+	var input models.Post
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Blog yazısını veritabanına kaydet
+	result := db.Create(&input)
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Blog yazısı kaydedilirken hata oluştu"})
+		return
+	}
+
+	// Başarı mesajı döndür
+	c.JSON(http.StatusCreated, gin.H{"message": "Blog yazısı başarıyla kaydedildi"})
+}
+func getPostsHandler(c *gin.Context) {
+	var posts []models.Post
+	result := db.Find(&posts)
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Blog yazıları getirilirken hata oluştu"})
+		return
+	}
+
+	c.JSON(http.StatusOK, posts)
+}
+func getPostHandler(c *gin.Context) {
+	postId, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz blog yazısı ID'si"})
+		return
+	}
+
+	var post models.Post
+	result := db.First(&post, postId)
+	if result.Error != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Blog yazısı bulunamadı"})
+		return
+	}
+
+	c.JSON(http.StatusOK, post)
+}
+func updatePostHandler(c *gin.Context) {
+	postId, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz blog yazısı ID'si"})
+		return
+	}
+
+	// İstekten güncellenecek bilgileri al
+	var input models.Post
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Blog yazısını veritabanında bul
+	var post models.Post
+	result := db.First(&post, postId)
+	if result.Error != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Blog yazısı bulunamadı"})
+		return
+	}
+
+	// Bilgileri güncelle
+	db.Model(&post).Updates(input)
+
+	// Başarı mesajı döndür
+	c.JSON(http.StatusOK, gin.H{"message": "Blog yazısı bilgileri başarıyla güncellendi"})
+}
+func deletePostHandler(c *gin.Context) {
+	postId, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz blog yazısı ID'si"})
+		return
+	}
+
+	// Blog yazısını veritabanında bul
+	var post models.Post
+	result := db.First(&post, postId)
+	if result.Error != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Blog yazısı bulunamadı"})
+		return
+	}
+
+	// Blog yazısını sil
+	db.Delete(&post)
+
+	// Başarı mesajı döndür
+	c.JSON(http.StatusOK, gin.H{"message": "Blog yazısı başarıyla silindi"})
 }
