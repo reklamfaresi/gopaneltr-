@@ -7,4 +7,5 @@ type User struct {
 	Name     string `json:"name"`
 	Email    string `json:"email" gorm:"uniqueIndex"`
 	Password string `json:"password"`
+	Role     string `json:"role"` // Yeni alan
 }
